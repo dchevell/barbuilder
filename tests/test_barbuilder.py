@@ -13,15 +13,17 @@ def test_render():
     s = i.add_item('suboption2')
     s.href = 'https://github.com/swiftbar/SwiftBar'
     i.set_alternate('alt')
+    i.add_item('suboption3', shell='/some/command', param0='"this is text"; rm -rf /')
     out = str(m)
     assert out == """\
 title
 ---
 option 1
-option 2 | color="green"
---suboption1 | sfimage="calendar"
+option 2 | color=green
+--suboption1 | sfimage=calendar
 -----
---suboption2 | href="https://github.com/swiftbar/SwiftBar"
-alt | alternate="True"
+--suboption2 | href=https://github.com/swiftbar/SwiftBar
+--suboption3 | shell=/some/command param0='"this is text"; rm -rf /'
+alt | alternate=True
 """.strip()
 
