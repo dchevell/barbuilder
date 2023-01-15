@@ -2,12 +2,7 @@ from __future__ import annotations
 
 from textwrap import indent
 
-try:
-    from typing import Self
-except ImportError:
-    pass
-
-from .base import BaseItem, BaseItemContainer, ItemParams, ItemParamsDict, T
+from .base import BaseItem, BaseItemContainer, ItemParams
 
 
 class HeaderItem(BaseItem):
@@ -15,7 +10,9 @@ class HeaderItem(BaseItem):
 
 
 class HeaderItemContainer(BaseItemContainer[HeaderItem]):
-    pass
+
+    def add_item(self, title: str, **params: ItemParams) -> HeaderItem:
+        return self._item_factory(HeaderItem, title, **params)
 
 
 class MenuItem(BaseItem, BaseItemContainer['MenuItem']):
@@ -40,5 +37,4 @@ class MenuItem(BaseItem, BaseItemContainer['MenuItem']):
     def add_divider(self) -> MenuItem:
         return self.add_item('---')
 
-
-
+# class MenuItemContainer(BaseItemContainer[MenuItem]):
