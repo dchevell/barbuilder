@@ -1,10 +1,10 @@
 from typing import Iterator
 
-from .base import BaseItem, BaseItemContainer, ItemParams, ItemParamsDict
+from .base import BaseItemContainer, ItemParams, ItemParamsDict
 from .items import HeaderItem, HeaderItemContainer, MenuItem
 
 
-class Menu(BaseItemContainer[BaseItem]):
+class Menu(BaseItemContainer[MenuItem | HeaderItem]):
     def __init__(self, title: str | None = None, streamable: bool = False,
                  **params: ItemParams) -> None:
         super().__init__()
@@ -14,7 +14,7 @@ class Menu(BaseItemContainer[BaseItem]):
         if title:
             self.add_header(title, **params)
 
-    def __iter__(self) -> Iterator[BaseItem]:
+    def __iter__(self) -> Iterator[MenuItem | HeaderItem]:
         yield from self._headers
         if self:
             yield MenuItem('---')
@@ -26,24 +26,23 @@ class Menu(BaseItemContainer[BaseItem]):
             lines.append(str(item))
         return '\n'.join(lines)
 
-    def add_header(self, title: str, **params: ItemParams) -> BaseItem:
-        return self._headers.add_item(title, **params)
-
-    def add_item(self, title: str, **params: ItemParams) -> BaseItem:
-        return self._item_factory(MenuItem, title, **params)
-
-    def add_divider(self):
-        return self._item_factory(MenuItem, '---')
-
     @property
     def header(self) -> HeaderItem | None:
-        if self._headers:
-            return self._headers[0]
-        return None
+        if not self._headers:
+            return None
+        return self._headers[0]
+
+    @property
+    def title(self) -> str | None:
+        if not self.header:
+            return None
+        return self.header.title
 
     @property
     def params(self) -> ItemParamsDict | None:
-        if self._headers:
-            return self._headers[0].params
-        return None
+        if not self.header:
+            return None
+        return self.header.params
 
+    def add_header(self, title: str, **params: ItemParams) -> HeaderItem:
+        return self._headers.add_item(title, **params)
