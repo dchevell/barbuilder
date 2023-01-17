@@ -2,16 +2,28 @@ from __future__ import annotations
 
 from textwrap import indent
 
-from .base import BaseItem, BaseItemContainer
+from .base import ConfigurableItem, Item, ItemContainer, ItemParams
 
 
-class HeaderItem(BaseItem):
+class Divider(Item):
+    title = '---'
+
+
+class Reset(Item):
+    title = '~~~'
+
+
+class HeaderItem(ConfigurableItem):
     pass
 
-class HeaderItemContainer(BaseItemContainer[HeaderItem]):
-    pass
 
-class MenuItem(BaseItem, BaseItemContainer['MenuItem']):
+class HeaderItemContainer(ItemContainer):
+
+    def add_item(self, title: str, **params: ItemParams) -> Item:
+        return self._item_factory(HeaderItem, title, **params)
+
+
+class MenuItem(ConfigurableItem, ItemContainer):
 
     def __str__(self) -> str:
         lines = [super().__str__()]
@@ -25,5 +37,8 @@ class MenuItem(BaseItem, BaseItemContainer['MenuItem']):
         children = ", ".join(repr(i) for i in self)
         return f'{self.__class__.__name__}("{self.title}", [{children}])'
 
-    def add_divider(self) -> MenuItem:
-        return self.add_item('---')
+    def add_item(self, title: str, **params: ItemParams) -> Item:
+        return self._item_factory(MenuItem, title, **params)
+
+    def add_divider(self) -> Item:
+        return self._item_factory(Divider)

@@ -1,10 +1,10 @@
 from typing import Iterator
 
-from .base import BaseItemContainer, ItemParams, ItemParamsDict
+from .base import Item, ItemContainer, ItemParams, ItemParamsDict
 from .items import HeaderItem, HeaderItemContainer, MenuItem
 
 
-class Menu(BaseItemContainer[MenuItem | HeaderItem]):
+class Menu(ItemContainer):
     def __init__(self, title: str | None = None, streamable: bool = False,
                  **params: ItemParams) -> None:
         super().__init__()
@@ -14,7 +14,7 @@ class Menu(BaseItemContainer[MenuItem | HeaderItem]):
         if title:
             self.add_header(title, **params)
 
-    def __iter__(self) -> Iterator[MenuItem | HeaderItem]:
+    def __iter__(self) -> Iterator[Item]:
         yield from self._headers
         if self:
             yield MenuItem('---')
@@ -29,25 +29,35 @@ class Menu(BaseItemContainer[MenuItem | HeaderItem]):
         return '\n'.join(lines)
 
     @property
-    def header(self) -> HeaderItem | None:
+    def header(self) -> Item | None:
         if not self._headers:
             return None
         return self._headers[0]
 
     @property
     def title(self) -> str | None:
-        if not self.header:
+        if self.header is None:
             return None
         return self.header.title
 
+    @title.setter
+    def title(self, value: str) -> None:
+        if self.header is None:
+            self.add_header(value)
+        else:
+            self.header.title = value
+
     @property
     def params(self) -> ItemParamsDict | None:
-        if not self.header:
+        if not isinstance(self.header, HeaderItem):
             return None
         return self.header.params
 
-    def add_header(self, title: str, **params: ItemParams) -> HeaderItem:
+    def add_header(self, title: str, **params: ItemParams) -> Item:
         return self._headers.add_item(title, **params)
 
-    def add_divider(self) -> MenuItem | HeaderItem:
+    def add_item(self, title: str, **params: ItemParams) -> Item:
+        return self._item_factory(MenuItem, title, **params)
+
+    def add_divider(self) -> Item:
         return self.add_item('---')
