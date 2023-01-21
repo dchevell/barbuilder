@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-import os
-from collections.abc import MutableSequence
+from collections.abc import Callable, MutableSequence
 from pathlib import Path
 from shlex import quote
-from typing import Any, Iterable, Iterator, overload
+from typing import Any, Iterable, Iterator, ParamSpec, overload
 
-PLUGIN_PATH = Path(os.environ.get('SWIFTBAR_PLUGIN_PATH', '.'))
+from.utils import serialize_callback, deserialize_callback, PLUGIN_PATH
 
-ItemParams = str | int | bool
+
+ItemParams = str | int | bool | Path
 ItemParamsDict = dict[str, ItemParams]
-
+P = ParamSpec('P')
 
 class Item:
     title: str = ''
@@ -25,6 +25,7 @@ class ConfigurableItem(Item):
         super().__init__()
         self.title = title
         self._alternate: Item | None = None
+        self._callbacks: list[str] = []
         self.params = params
 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -43,14 +44,33 @@ class ConfigurableItem(Item):
             raise NameError(f'name {name} is not defined.') from exc
 
     def __str__(self) -> str:
-        if not self.params:
-            return self.title
         title = self.title.replace(chr(124), chr(9474)) # melonamin is a smartass
-        params = ' '.join([f'{k}={quote(str(v))}' for k,v in self.params.items()])
+        params = ' '.join(self._encode_params())
+        if not params:
+            return self.title
         return f'{title} | {params}'
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}("{self.title}")'
+
+    def _encode_params(self) -> Iterator[str]:
+        params = self.params
+        if self._callbacks:
+            params = params.copy()
+            for key in self.params:
+                if key in ['bash', 'shell', 'terminal'] or key.startswith('param'):
+                    del params[key]
+            params['shell'] = PLUGIN_PATH
+            params['param0'] = '--script-callbacks'
+            for i, callback in enumerate(self._callbacks, start=1):
+                params[f'param{i}'] = callback
+            params['terminal'] = False
+        for key, value in params.items():
+            yield f'{key}={quote(str(value))}'
+
+    def add_callback(self, func: Callable[P, object], *args: P.args, **kwargs: P.kwargs) -> None:
+        callback = serialize_callback(func, *args, **kwargs)
+        self._callbacks.append(callback)
 
     def set_alternate(self, title: str, **params: ItemParams) -> Item:
         cls = self.__class__

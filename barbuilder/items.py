@@ -17,12 +17,6 @@ class HeaderItem(ConfigurableItem):
     pass
 
 
-class HeaderItemContainer(ItemContainer):
-
-    def add_item(self, title: str, **params: ItemParams) -> Item:
-        return self._item_factory(HeaderItem, title, **params)
-
-
 class MenuItem(ConfigurableItem, ItemContainer):
 
     def __str__(self) -> str:
@@ -42,3 +36,9 @@ class MenuItem(ConfigurableItem, ItemContainer):
 
     def add_divider(self) -> Item:
         return self._item_factory(Divider)
+
+
+class HeaderItemContainer(ItemContainer):
+
+    def add_item(self, title: str, **params: ItemParams) -> Item:
+        return self._item_factory(HeaderItem, title, **params)
