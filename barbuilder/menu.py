@@ -5,7 +5,7 @@ from typing import Iterator
 
 from .base import Item, ItemContainer, ItemParams, ItemParamsDict
 from .items import HeaderItem, HeaderItemContainer, MenuItem, Reset
-from .utils import deserialize_callback, P
+from .utils import P, deserialize_callback
 
 
 class Menu(ItemContainer):

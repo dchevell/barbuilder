@@ -16,7 +16,6 @@ def test_render():
     i.set_alternate('alt')
     i.add_item('suboption3', shell='/some/command', param0='"this is text"; rm -rf /')
     out = str(m)
-
     assert out == """\
 title
 title2 | length=20

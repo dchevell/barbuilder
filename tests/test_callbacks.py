@@ -1,9 +1,10 @@
-import pytest
-
 import os
+
+import pytest
 
 from barbuilder import Menu
 from barbuilder.utils import deserialize_callback, serialize_callback
+
 
 def dummy1():
     return True
@@ -22,7 +23,6 @@ def dummy3(*args, **kwargs):
     args_list.reverse()
     kwargs_list.reverse()
     return args_list, kwargs_list
-
 
 dummy_callbacks = [
     [dummy1,    (),             {},                 True],
@@ -52,12 +52,9 @@ def test_add_callback(in_func, in_args, in_kwargs, expected, script_path):
     menu = Menu('menu')
     item = menu.add_item('option')
     item.add_callback(in_func, *in_args, **in_kwargs)
-
-
     out = str(menu)
-    expected = f"""\
+    assert out == f"""\
 menu
 ---
 option | shell=/path/to/script.py param0=--script-callbacks param1={item._callbacks[0]} terminal=False
 """
-    assert out == expected

@@ -1,9 +1,8 @@
-from __future__ import annotations
-
 from collections.abc import Callable, MutableSequence
 from pathlib import Path
 from shlex import quote
 from typing import Any, Iterable, Iterator, ParamSpec, overload
+
 
 from.utils import serialize_callback, PLUGIN_PATH
 

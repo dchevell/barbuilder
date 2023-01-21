@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from textwrap import indent
 
 from .base import ConfigurableItem, Item, ItemContainer, ItemParams
