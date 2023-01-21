@@ -13,6 +13,7 @@ class Menu(ItemContainer):
         super().__init__()
         self._headers = HeaderItemContainer()
         self._main: Callable[..., None] | None = None
+        self._repeat_interval: int | float = 0
         self._parser = ArgumentParser(add_help=False)
         self._parser.add_argument('--script-callbacks', nargs='+')
 
@@ -30,6 +31,14 @@ class Menu(ItemContainer):
         for item in self:
             lines.append(str(item))
         return '\n'.join(lines) + '\n'
+
+    def _run_callbacks(self, callbacks: list[str]) -> None:
+        for callback in callbacks:
+            func: Callable[..., object]
+            args: P.args
+            kwargs: P.kwargs
+            func, args, kwargs = deserialize_callback(callback)
+            func(*args, **kwargs)
 
     @property
     def header(self) -> Item | None:
@@ -69,13 +78,8 @@ class Menu(ItemContainer):
         self._main = func
         return func
 
-    def _run_callbacks(self, callbacks: list[str]) -> None:
-        for callback in callbacks:
-            func: Callable[..., object]
-            args: P.args
-            kwargs: P.kwargs
-            func, args, kwargs = deserialize_callback(callback)
-            func(*args, **kwargs)
+    def set_repeat_interval(self, interval: int | float) -> None:
+        self._repeat_interval = interval
 
     def run(self, repeat_interval: int | None = None) -> None:
         args = self._parser.parse_args()
@@ -87,9 +91,11 @@ class Menu(ItemContainer):
         if not repeat_interval:
             self._main()
             print(self)
-        else:
-            while True:
-                self._main()
-                print(Reset())
-                print(self, flush=True)
-                sleep(repeat_interval)
+            return
+
+        self.set_repeat_interval(repeat_interval)
+        while True:
+            self._main()
+            print(Reset())
+            print(self, flush=True)
+            sleep(self._repeat_interval)

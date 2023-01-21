@@ -5,7 +5,7 @@ from pathlib import Path
 from shlex import quote
 from typing import Any, Iterable, Iterator, ParamSpec, overload
 
-from.utils import serialize_callback, deserialize_callback, PLUGIN_PATH
+from.utils import serialize_callback, PLUGIN_PATH
 
 
 ItemParams = str | int | bool | Path
