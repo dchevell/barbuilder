@@ -28,4 +28,4 @@ option 2 | color=green
 --suboption2 | href=https://github.com/swiftbar/SwiftBar
 --suboption3 | shell=/some/command param0='"this is text"; rm -rf /'
 alt | alternate=True
-""".strip()
+"""
