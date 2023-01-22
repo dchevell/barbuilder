@@ -1,15 +1,27 @@
-from collections.abc import Callable, MutableSequence
+import re
+import shlex
+from collections.abc import Callable
 from pathlib import Path
-from shlex import quote
-from typing import Any, Iterable, Iterator, ParamSpec, overload
+from textwrap import indent
+from typing import Any, Iterator, ParamSpec
 
 
 from.utils import serialize_callback, PLUGIN_PATH
 
 
-ItemParams = str | int | bool | Path
-ItemParamsDict = dict[str, ItemParams]
+Params = str | int | bool | Path
+ParamsDict = dict[str, Params]
 P = ParamSpec('P')
+
+
+valid_params_re = re.compile('|'.join([
+    'alternate', 'ansi', 'bash', 'checked', 'color', 'dropdown', 'emojize', 'font',
+    'href', 'image', 'length', 'md', 'param[0-9]+', 'refresh', 'sfcolor',
+    'sfcolor([1-9]|10)?', 'sfimage', 'sfsize', 'shell', 'shortcut', 'size', 'symbolize',
+    'templateImage', 'terminal', 'tooltip', 'trim',  'webView', 'webViewHeight',
+    'webViewWidth'
+]), re.IGNORECASE)
+
 
 class Item:
     title: str = ''
@@ -20,7 +32,7 @@ class Item:
 
 class ConfigurableItem(Item):
 
-    def __init__(self, title: str, **params: ItemParams) -> None:
+    def __init__(self, title: str = '', **params: Params) -> None:
         super().__init__()
         self.title = title
         self._alternate: Item | None = None
@@ -28,29 +40,33 @@ class ConfigurableItem(Item):
         self.params = params
 
     def __setattr__(self, name: str, value: Any) -> None:
-        excluded_names = ['params', *dir(self)]
-        if 'params' in self.__dict__ and name not in excluded_names:
+        if valid_params_re.fullmatch(name):
             self.params[name] = value
         else:
             self.__dict__[name] = value
 
     def __getattr__(self, name: str) -> Any:
-        if 'params' in self.__dict__ and name in self.params:
+        if valid_params_re.fullmatch(name):
             return self.params[name]
-        try:
-            return self.__dict__[name]
-        except KeyError as exc:
-            raise NameError(f'name {name} is not defined.') from exc
+        if name not in self.__dict__:
+            raise AttributeError(
+                f"'{self.__class__.__name__}' object has no attribute '{name}'"
+            )
+        return self.__dict__[name]
 
     def __str__(self) -> str:
-        title = self.title.replace(chr(124), chr(9474)) # melonamin is a smartass
-        params = ' '.join(self._encode_params())
-        if not params:
-            return self.title
-        return f'{title} | {params}'
+        return self._render_line()
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}("{self.title}")'
+
+    def _render_line(self) -> str:
+        line = self.title.replace('|', chr(9474)) # melonamin is a smartass
+        params = ' '.join(self._encode_params())
+        if params:
+            line += f' | {params}'
+        line = line.replace('\n', '\\n')
+        return line
 
     def _encode_params(self) -> Iterator[str]:
         params = self.params
@@ -65,76 +81,33 @@ class ConfigurableItem(Item):
                 params[f'param{i}'] = callback
             params['terminal'] = False
         for key, value in params.items():
-            yield f'{key}={quote(str(value))}'
+            yield f'{key}={shlex.quote(str(value))}'
 
     def add_callback(self, func: Callable[P, object], *args: P.args, **kwargs: P.kwargs) -> None:
         callback = serialize_callback(func, *args, **kwargs)
         self._callbacks.append(callback)
 
-    def set_alternate(self, title: str, **params: ItemParams) -> Item:
+    def set_alternate(self, title: str, **params: Params) -> Item:
         cls = self.__class__
         params['alternate'] = True
         self._alternate = cls(title, **params)
         return self._alternate
 
 
-class ItemContainer(MutableSequence[Item]):
+class NestableItem(ConfigurableItem):
 
-    def __init__(self) -> None:
-        self._children: list[Item] = []
+    def __init__(self, title: str = '', **params: Params) -> None:
+        super().__init__(title, **params)
+        self.children: list[Item] = []
 
-    @overload
-    def __getitem__(self, index: int) -> Item:
-        ...
-    @overload
-    def __getitem__(self, index: slice) -> list[Item]:
-        ...
-    def __getitem__(self, index: int | slice) -> Item | list[Item]:
-        return self._children[index]
-
-    @overload
-    def __setitem__(self, index: int, item: Item) -> None:
-        ...
-    @overload
-    def __setitem__(self, index: slice, item: Iterable[Item]) -> None:
-        ...
-    def __setitem__(self, index: int | slice, item: Item | Iterable[Item]) -> None:
-        if isinstance(index, int) and not isinstance(item, Iterable):
-            self._children[index] = item
-        elif isinstance(index, slice) and isinstance(item, Iterable):
-            self._children[index] = item
-        else:
-            raise TypeError(f"{index}/{item} Invalid index/item type.")
-
-    def __delitem__(self, index: int | slice) -> None:
-        del self._children[index]
-
-    def __len__(self) -> int:
-        return len(self._children)
-
-    def __iter__(self) -> Iterator[Item]:
-        return iter(self._children)
-
-    def __bool__(self) -> bool:
-        return bool(self._children)
+    def __str__(self) -> str:
+        lines = [self._render_line()]
+        for item in self.children:
+            lines.append(indent(str(item), '--'))
+        if self._alternate is not None:
+            lines.append(str(self._alternate))
+        return '\n'.join(lines)
 
     def __repr__(self) -> str:
-        children = ", ".join(repr(i) for i in self)
-        return f'{self.__class__.__name__}({children})'
-
-    def append(self, value: Item) -> None:
-        self._children.append(value)
-
-    def insert(self, index: int, value: Item) -> None:
-        self._children.insert(index, value)
-
-    def _item_factory(self, cls: type[Item], title: str | None = None,
-                      **params: ItemParams) -> Item:
-        if not issubclass(cls, ConfigurableItem):
-            item = cls()
-        elif title is None:
-            raise TypeError(f'Type "{cls}" requires a title')
-        else:
-            item = cls(title, **params)
-        self.append(item)
-        return item
+        children = ", ".join(repr(i) for i in self.children)
+        return f'{self.__class__.__name__}("{self.title}", [{children}])'

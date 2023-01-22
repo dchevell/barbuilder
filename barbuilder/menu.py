@@ -1,34 +1,62 @@
+import sys
+import traceback
 from argparse import ArgumentParser
 from collections.abc import Callable
+from functools import wraps
 from time import sleep
-from typing import Iterator
+from typing import ParamSpec, TypeVar, Union
 
-from .base import Item, ItemContainer, ItemParams, ItemParamsDict
-from .items import HeaderItem, HeaderItemContainer, MenuItem, Reset
-from .utils import P, deserialize_callback
+from .base import ConfigurableItem, Item, NestableItem, Params
+from .utils import PLUGIN_PATH, copy_to_clipboard, deserialize_callback, refreshplugin
 
 
-class Menu(ItemContainer):
-    def __init__(self, title: str | None = None, **params: ItemParams) -> None:
-        super().__init__()
-        self._headers = HeaderItemContainer()
+P = ParamSpec('P')
+R = TypeVar('R')
+MetaDecorator = Union[Callable[..., None], Callable[[Callable[..., R]], Callable[..., None]]]
+
+
+class Divider(Item):
+    title = '---'
+
+
+class Reset(Item):
+    title = '~~~'
+
+
+class HeaderItem(ConfigurableItem):
+    pass
+
+
+class MenuItem(NestableItem):
+
+    def add_item(self, title: str = '', **params: Params) -> 'MenuItem':
+        item = MenuItem(title, **params)
+        self.children.append(item)
+        return item
+
+    def add_divider(self) -> Item:
+        item = Divider()
+        self.children.append(item)
+        return item
+
+
+class Menu(MenuItem):
+    def __init__(self, title: str = '', **params: Params) -> None:
+        super().__init__(title, **params)
+        self.headers: list[Item] = []
+        self.body: list[Item] = []
         self._main: Callable[..., None] | None = None
         self._repeat_interval: int | float = 0
         self._parser = ArgumentParser(add_help=False)
         self._parser.add_argument('--script-callbacks', nargs='+')
 
-        if title:
-            self.add_header(title, **params)
-
-    def __iter__(self) -> Iterator[Item]:
-        yield from self._headers
-        if self:
-            yield MenuItem('---')
-        yield from self._children
 
     def __str__(self) -> str:
-        lines = []
-        for item in self:
+        lines = [self._render_line()]
+        for item in self.headers:
+            lines.append(str(item))
+        lines.append(str(Divider()))
+        for item in self.children:
             lines.append(str(item))
         return '\n'.join(lines) + '\n'
 
@@ -40,43 +68,55 @@ class Menu(ItemContainer):
             func, args, kwargs = deserialize_callback(callback)
             func(*args, **kwargs)
 
-    @property
-    def header(self) -> Item | None:
-        if not self._headers:
-            return None
-        return self._headers[0]
+    def add_header(self, title: str, **params: Params) -> Item:
+        item = HeaderItem(title, **params)
+        self.headers.append(item)
+        return item
 
-    @property
-    def title(self) -> str | None:
-        if self.header is None:
-            return None
-        return self.header.title
+    def clear(self) -> None:
+        self.title = ''
+        self._alternate = None
+        self._callbacks.clear()
+        self.params.clear()
+        self.headers.clear()
+        self.children.clear()
 
-    @title.setter
-    def title(self, value: str) -> None:
-        if self.header is None:
-            self.add_header(value)
-        else:
-            self.header.title = value
+    def runner(
+        self, func: Callable[..., R] | None = None, *, reset: bool = True
+    ) -> MetaDecorator[R]:
 
-    @property
-    def params(self) -> ItemParamsDict | None:
-        if not isinstance(self.header, HeaderItem):
-            return None
-        return self.header.params
+        def wrapperfactory(inner_func: Callable[P, R]) -> Callable[..., None]:
+            @wraps(inner_func)
+            def wrapper(*args: P.args, **kwargs: P.kwargs) -> None:
+                if reset:
+                    self.clear()
+                try:
+                    inner_func(*args, **kwargs)
+                except Exception: # pylint: disable=broad-except
+                    exc_info = sys.exc_info()
+                    traceback_text = ''.join(traceback.format_exception(*exc_info)).strip()
+                    self.clear()
+                    self.title = f':exclamationmark.triangle.fill: {PLUGIN_PATH.name}'
+                    self.params['sfcolor'] = 'yellow'
+                    error_item = self.add_item('Error running plugin')
+                    error_item.add_item('Traceback')
+                    error_item.add_divider()
+                    error_item.add_item(
+                        traceback_text, size=12, font='courier',
+                        tooltip='Copy traceback to clipboard'
+                    ).add_callback(copy_to_clipboard, traceback_text)
+                    self.add_divider()
+                    self.add_item('Refresh', sfimage='arrow.clockwise').add_callback(refreshplugin)
+            return wrapper
 
-    def add_header(self, title: str, **params: ItemParams) -> Item:
-        return self._headers.add_item(title, **params)
+        def decorator(inner_func: Callable[..., R]) -> Callable[..., None]:
+            return wrapperfactory(inner_func)
 
-    def add_item(self, title: str, **params: ItemParams) -> Item:
-        return self._item_factory(MenuItem, title, **params)
+        if func is None:
+            return decorator
+        self._main = wrapperfactory(func)
+        return self._main
 
-    def add_divider(self) -> Item:
-        return self.add_item('---')
-
-    def runner(self, func: Callable[..., None]) -> Callable[..., None]:
-        self._main = func
-        return func
 
     def set_repeat_interval(self, interval: int | float) -> None:
         self._repeat_interval = interval
