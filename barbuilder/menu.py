@@ -115,7 +115,8 @@ class Menu(MenuItem):
             return wrapper
 
         def decorator(inner_func: Callable[..., R]) -> Callable[..., None]:
-            return wrapperfactory(inner_func)
+            self._main = wrapperfactory(inner_func)
+            return self._main
 
         if func is None:
             return decorator
