@@ -1,17 +1,18 @@
+from __future__ import annotations
+
 import re
 import shlex
 from collections.abc import Callable
 from pathlib import Path
 from textwrap import indent
-from typing import Any, Iterator, ParamSpec
+from typing import Any, Iterator, Union
+
+from.utils import serialize_callback, PLUGIN_PATH, P
 
 
-from.utils import serialize_callback, PLUGIN_PATH
-
-
-Params = str | int | bool | Path
+Params = Union[str, int, bool, Path]
 ParamsDict = dict[str, Params]
-P = ParamSpec('P')
+
 
 
 valid_params_re = re.compile('|'.join([

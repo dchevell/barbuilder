@@ -1,16 +1,18 @@
+from __future__ import annotations
+
 import sys
 import traceback
 from argparse import ArgumentParser
 from collections.abc import Callable
 from functools import wraps
 from time import sleep
-from typing import ParamSpec, TypeVar, Union
+from typing import TypeVar, Union
+
 
 from .base import ConfigurableItem, Item, NestableItem, Params
-from .utils import PLUGIN_PATH, copy_to_clipboard, deserialize_callback, refreshplugin
+from .utils import PLUGIN_PATH, P, copy_to_clipboard, deserialize_callback, refreshplugin
 
 
-P = ParamSpec('P')
 R = TypeVar('R')
 MetaDecorator = Union[
     Callable[..., None],

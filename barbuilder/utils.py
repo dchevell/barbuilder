@@ -1,17 +1,25 @@
+from __future__ import annotations
+
 import base64
 import os
 import pickle
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
-from typing import ParamSpec
+try:
+    from typing import ParamSpec
+except ImportError:
+    class ParamSpec:
+        def __init__(self, *args, **kwargs):
+            pass
+
 from urllib.parse import urlencode
 
 
-PLUGIN_PATH = Path(os.environ.get('SWIFTBAR_PLUGIN_PATH', '.'))
-
-
 P = ParamSpec('P')
+
+
+PLUGIN_PATH = Path(os.environ.get('SWIFTBAR_PLUGIN_PATH', '.'))
 
 
 def serialize_callback(callback: Callable[P, object], *args: P.args, **kwargs: P.kwargs) -> str:
