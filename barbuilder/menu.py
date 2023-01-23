@@ -12,7 +12,10 @@ from .utils import PLUGIN_PATH, copy_to_clipboard, deserialize_callback, refresh
 
 P = ParamSpec('P')
 R = TypeVar('R')
-MetaDecorator = Union[Callable[..., None], Callable[[Callable[..., R]], Callable[..., None]]]
+MetaDecorator = Union[
+    Callable[..., None],
+    Callable[[Callable[..., R]], Callable[..., None]]
+]
 
 
 class Divider(Item):
@@ -106,7 +109,9 @@ class Menu(MenuItem):
                         tooltip='Copy traceback to clipboard'
                     ).add_callback(copy_to_clipboard, traceback_text)
                     self.add_divider()
-                    self.add_item('Refresh', sfimage='arrow.clockwise').add_callback(refreshplugin)
+                    self.add_item(
+                        'Refresh', sfimage='arrow.clockwise'
+                    ).add_callback(refreshplugin)
             return wrapper
 
         def decorator(inner_func: Callable[..., R]) -> Callable[..., None]:
