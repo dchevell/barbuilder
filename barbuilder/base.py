@@ -7,6 +7,7 @@ from pathlib import Path
 from textwrap import indent
 from typing import Any, Iterator, Union
 
+
 from.utils import serialize_callback, PLUGIN_PATH, P
 
 
@@ -94,6 +95,12 @@ class ConfigurableItem(Item):
         self._alternate = cls(title, **params)
         return self._alternate
 
+    def clear(self) -> None:
+        self.title = ''
+        self._alternate = None
+        self._callbacks.clear()
+        self.params.clear()
+
 
 class NestableItem(ConfigurableItem):
 
@@ -112,3 +119,7 @@ class NestableItem(ConfigurableItem):
     def __repr__(self) -> str:
         children = ", ".join(repr(i) for i in self.children)
         return f'{self.__class__.__name__}("{self.title}", [{children}])'
+
+    def clear(self) -> None:
+        super().clear()
+        self.children.clear()

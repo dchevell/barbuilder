@@ -8,9 +8,9 @@ from functools import wraps
 from time import sleep
 from typing import TypeVar, Union
 
-
 from .base import ConfigurableItem, Item, NestableItem, Params
-from .utils import PLUGIN_PATH, P, copy_to_clipboard, deserialize_callback, refreshplugin
+from .utils import (PLUGIN_PATH, P, copy_to_clipboard, deserialize_callback,
+                    refreshplugin)
 
 
 R = TypeVar('R')
@@ -22,10 +22,6 @@ MetaDecorator = Union[
 
 class Divider(Item):
     title = '---'
-
-
-class Reset(Item):
-    title = '~~~'
 
 
 class HeaderItem(ConfigurableItem):
@@ -51,13 +47,14 @@ class Menu(MenuItem):
         self.headers: list[Item] = []
         self.body: list[Item] = []
         self._main: Callable[..., None] | None = None
-        self._repeat_interval: int | float = 0
         self._parser = ArgumentParser(add_help=False)
         self._parser.add_argument('--script-callbacks', nargs='+')
 
 
     def __str__(self) -> str:
         lines = [self._render_line()]
+        if self._alternate is not None:
+            lines.append(str(self._alternate))
         for item in self.headers:
             lines.append(str(item))
         lines.append(str(Divider()))
@@ -78,13 +75,29 @@ class Menu(MenuItem):
         self.headers.append(item)
         return item
 
+    def reset(self) -> None:
+        print('\u001B[2J\u001B[0;0f')
+        print('~~~')
+
     def clear(self) -> None:
-        self.title = ''
-        self._alternate = None
-        self._callbacks.clear()
-        self.params.clear()
+        super().clear()
         self.headers.clear()
-        self.children.clear()
+
+    def error(self, message: str) -> None:
+        self.clear()
+        self.title = f':exclamationmark.triangle.fill: {PLUGIN_PATH.name}'
+        self.params['sfcolor'] = 'yellow'
+        error = self.add_item('Error running plugin')
+        error.add_item('Traceback')
+        error.add_divider()
+        error.add_item(
+            message, size=12, font='courier',
+            tooltip='Copy error to clipboard'
+        ).add_callback(copy_to_clipboard, message)
+        self.add_divider()
+        self.add_item(
+            'Refresh', sfimage='arrow.clockwise'
+        ).add_callback(refreshplugin)
 
     def runner(
         self, func: Callable[..., R] | None = None, *, reset: bool = True
@@ -97,23 +110,10 @@ class Menu(MenuItem):
                     self.clear()
                 try:
                     inner_func(*args, **kwargs)
-                except Exception: # pylint: disable=broad-except
+                except: # pylint: disable=bare-except
                     exc_info = sys.exc_info()
                     traceback_text = ''.join(traceback.format_exception(*exc_info)).strip()
-                    self.clear()
-                    self.title = f':exclamationmark.triangle.fill: {PLUGIN_PATH.name}'
-                    self.params['sfcolor'] = 'yellow'
-                    error_item = self.add_item('Error running plugin')
-                    error_item.add_item('Traceback')
-                    error_item.add_divider()
-                    error_item.add_item(
-                        traceback_text, size=12, font='courier',
-                        tooltip='Copy traceback to clipboard'
-                    ).add_callback(copy_to_clipboard, traceback_text)
-                    self.add_divider()
-                    self.add_item(
-                        'Refresh', sfimage='arrow.clockwise'
-                    ).add_callback(refreshplugin)
+                    self.error(traceback_text)
             return wrapper
 
         def decorator(inner_func: Callable[..., R]) -> Callable[..., None]:
@@ -125,25 +125,23 @@ class Menu(MenuItem):
         self._main = wrapperfactory(func)
         return self._main
 
-
-    def set_repeat_interval(self, interval: int | float) -> None:
-        self._repeat_interval = interval
-
-    def run(self, repeat_interval: int | None = None) -> None:
+    def run(self, repeat_interval: float | Callable[[], float] | None = None) -> None:
         args = self._parser.parse_args()
         if args.script_callbacks is not None:
             self._run_callbacks(args.script_callbacks)
             return
         if self._main is None:
             raise RuntimeError('no main function specified')
-        if not repeat_interval:
+        if repeat_interval is None:
             self._main()
             print(self)
             return
 
-        self.set_repeat_interval(repeat_interval)
         while True:
             self._main()
-            print(Reset())
+            self.reset()
             print(self, flush=True)
-            sleep(self._repeat_interval)
+            if callable(repeat_interval):
+                sleep(repeat_interval())
+            else:
+                sleep(repeat_interval)

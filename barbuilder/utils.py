@@ -4,16 +4,18 @@ import base64
 import os
 import pickle
 import subprocess
+import sys
 from collections.abc import Callable
 from pathlib import Path
-try:
+from urllib.parse import urlencode
+
+
+if sys.version_info >= (3, 10):
     from typing import ParamSpec
-except ImportError:
+else:
     class ParamSpec:
         def __init__(self, *args, **kwargs):
             pass
-
-from urllib.parse import urlencode
 
 
 P = ParamSpec('P')
