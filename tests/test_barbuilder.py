@@ -28,3 +28,46 @@ option 2 | color=green
 --suboption3 | shell=/some/command param0='"this is text"; rm -rf /'
 alt | alternate=True
 """
+
+def test_clear_menu():
+    m = Menu('menu', sfimage='circle')
+    m.add_header('header')
+    i = m.add_item('ite', color='red')
+
+    assert m.title == 'menu'
+    assert len(m.params) == 1
+    assert len(m.headers) == 1
+    assert len(m.children) == 1
+
+    m.clear()
+
+    assert m.title == ''
+    assert len(m.params) == 0
+    assert len(m.children) == 0
+    assert len(m.headers) == 0
+
+
+def test_clear_menuitem():
+    m = Menu('menu', sfimage='circle')
+    i = m.add_item('item', color='red')
+    i.add_callback(print, 'test')
+    i.set_alternate('alt', color='green')
+    i.add_item('subitem')
+
+    assert i.title == 'item'
+    assert i._alternate is not None
+    assert len(i.params) == 1
+    assert len(i.children) == 1
+    assert len(i._callbacks) == 1
+    assert m.title == 'menu'
+    assert len(m.children) == 1
+
+    i.clear()
+
+    assert i.title == ''
+    assert i._alternate is None
+    assert len(i.params) == 0
+    assert len(i.children) == 0
+    assert len(i._callbacks) == 0
+    assert m.title == 'menu'
+    assert len(m.children) == 1

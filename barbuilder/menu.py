@@ -30,7 +30,7 @@ class HeaderItem(ConfigurableItem):
 
 class MenuItem(NestableItem):
 
-    def add_item(self, title: str = '', **params: Params) -> 'MenuItem':
+    def add_item(self, title: str = '', **params: Params) -> MenuItem:
         item = MenuItem(title, **params)
         self.children.append(item)
         return item
@@ -75,13 +75,13 @@ class Menu(MenuItem):
         self.headers.append(item)
         return item
 
-    def reset(self) -> None:
-        print('\u001B[2J\u001B[0;0f')
-        print('~~~')
-
     def clear(self) -> None:
         super().clear()
         self.headers.clear()
+
+    def reset(self) -> None:
+        print('\u001B[2J\u001B[0;0f')
+        print('~~~')
 
     def error(self, message: str) -> None:
         self.clear()
@@ -100,13 +100,13 @@ class Menu(MenuItem):
         ).add_callback(refreshplugin)
 
     def runner(
-        self, func: Callable[..., R] | None = None, *, reset: bool = True
+        self, func: Callable[..., R] | None = None, *, clear: bool = False
     ) -> MetaDecorator[R]:
 
         def wrapperfactory(inner_func: Callable[P, R]) -> Callable[..., None]:
             @wraps(inner_func)
             def wrapper(*args: P.args, **kwargs: P.kwargs) -> None:
-                if reset:
+                if clear:
                     self.clear()
                 try:
                     inner_func(*args, **kwargs)
