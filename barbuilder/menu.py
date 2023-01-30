@@ -47,9 +47,6 @@ class Menu(MenuItem):
         self.headers: list[Item] = []
         self.body: list[Item] = []
         self._main: Callable[..., None] | None = None
-        self._parser = ArgumentParser(add_help=False)
-        self._parser.add_argument('--script-callbacks', nargs='+')
-
 
     def __str__(self) -> str:
         lines = [self._render_line()]
@@ -126,7 +123,9 @@ class Menu(MenuItem):
         return self._main
 
     def run(self, repeat_interval: float | Callable[[], float] | None = None) -> None:
-        args = self._parser.parse_args()
+        parser = ArgumentParser(add_help=False)
+        parser.add_argument('--script-callbacks', nargs='+')
+        args = parser.parse_args()
         if args.script_callbacks is not None:
             self._run_callbacks(args.script_callbacks)
             return

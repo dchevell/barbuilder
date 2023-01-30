@@ -66,7 +66,7 @@ class ConfigurableItem(Item):
         line = self.title.replace('|', chr(9474)) # melonamin is a smartass
         params = ' '.join(self._encode_params())
         if params:
-            line += f' | {params}'
+            line = f'{line} | {params}'
         line = line.replace('\n', '\\n')
         return line
 
