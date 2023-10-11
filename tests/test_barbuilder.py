@@ -71,3 +71,10 @@ def test_clear_menuitem():
     assert len(i._callbacks) == 0
     assert m.title == 'menu'
     assert len(m.children) == 1
+
+
+def test_sfencode():
+    m = Menu('menu')
+    i = m.add_item('item', sfimage='circle')
+    i.sfconfig = {"renderingMode":"Palette", "colors":["red","blue"], "scale": "large", "weight": "bold"}
+    assert i.sfconfig == 'eyJyZW5kZXJpbmdNb2RlIjogIlBhbGV0dGUiLCAiY29sb3JzIjogWyJyZWQiLCAiYmx1ZSJdLCAic2NhbGUiOiAibGFyZ2UiLCAid2VpZ2h0IjogImJvbGQifQ=='

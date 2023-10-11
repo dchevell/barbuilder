@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import re
 import shlex
+from base64 import b64encode
 from collections.abc import Callable
 from pathlib import Path
 from textwrap import indent
@@ -18,8 +20,8 @@ ParamsDict = dict[str, Params]
 
 valid_params_re = re.compile('|'.join([
     'alternate', 'ansi', 'bash', 'checked', 'color', 'dropdown', 'emojize', 'font',
-    'href', 'image', 'length', 'md', 'param[0-9]+', 'refresh', 'sfcolor',
-    'sfcolor([1-9]|10)?', 'sfimage', 'sfsize', 'shell', 'shortcut', 'size', 'symbolize',
+    'href', 'image', 'length', 'md', 'param[0-9]+', 'refresh', 'sfcolor([1-9]|10)?',
+    'sfconfig', 'sfimage', 'sfsize', 'shell', 'shortcut', 'size', 'symbolize',
     'templateImage', 'terminal', 'tooltip', 'trim',  'webView', 'webViewHeight',
     'webViewWidth'
 ]), re.IGNORECASE)
@@ -43,7 +45,12 @@ class ConfigurableItem(Item):
 
     def __setattr__(self, name: str, value: Any) -> None:
         if valid_params_re.fullmatch(name):
-            self.params[name] = value
+            if name == 'sfconfig' and isinstance(value, dict):
+                serialized = json.dumps(value).encode()
+                encoded = b64encode(serialized).decode()
+                self.params[name] = encoded
+            else:
+                self.params[name] = value
         else:
             self.__dict__[name] = value
 
